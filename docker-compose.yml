@@ -1,0 +1,32 @@
+services:
+  telemetry-api:
+    build: .
+    image: local/device-telemetry-api:latest
+    container_name: device-telemetry-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # --- Storage ---
+      TELEMETRY_DATABASE_PATH: /data/telemetry.db
+      # --- Network ---
+      TELEMETRY_HOST: 0.0.0.0
+      TELEMETRY_PORT: "8080"
+      # --- Sliding window (all knobs are optional; defaults shown) ---
+      TELEMETRY_INITIAL_SEQ: "0"          # first expected seq for a new device
+      TELEMETRY_WINDOW_SIZE: "1000"       # behind-frontier tolerance
+      TELEMETRY_WAIT_TIMEOUT_MS: "30000"  # gap wait time before a break is declared
+      # --- Background gap sweeper ---
+      TELEMETRY_SWEEP_INTERVAL_MS: "1000"
+      TELEMETRY_ENABLE_SWEEPER: "true"
+    volumes:
+      - telemetry-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=2); sys.exit(0 if json.load(r)['status']=='ok' else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  telemetry-data:
